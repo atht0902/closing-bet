@@ -67,19 +67,10 @@ st.markdown("""
     }
     .tag-strength { background: rgba(255,107,0,0.2); color: #ff8c40; }
     .tag-vol { background: rgba(0,150,255,0.2); color: #4dc9f6; }
+    .tag-vol100 { background: rgba(255,50,50,0.2); color: #ff6666; }
     .tag-gap { background: rgba(0,200,100,0.2); color: #4dff91; }
     .tag-trend { background: rgba(200,0,255,0.2); color: #d48fff; }
     .tag-sector { background: rgba(255,215,0,0.2); color: #ffd700; }
-    .gap-stat {
-        display: inline-block;
-        padding: 3px 10px;
-        border-radius: 6px;
-        font-size: 0.73rem;
-        font-weight: 700;
-        background: rgba(0,200,100,0.2);
-        color: #4dff91;
-        border: 1px solid rgba(0,200,100,0.3);
-    }
     .detail-row {
         font-size: clamp(0.65rem, 2.1vw, 0.76rem);
         color: #999;
@@ -136,7 +127,7 @@ st.markdown("""
 st.markdown("""
 <div class="main-header">
     <h1>🎯 홍익 종가베팅 스캐너</h1>
-    <p>종가매수 → 익일시가 갭수익 · 3:20 PM 추천</p>
+    <p>종가매수 → 익일시가 갭수익 · 6대 시그널 · v2.0</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -285,7 +276,7 @@ def run_analysis():
         batch = tickers[i:i + batch_size]
         try:
             data = yf.download(
-                batch, period="60d", group_by="ticker",
+                batch, period="120d", group_by="ticker",
                 progress=False, threads=True
             )
             if data.empty:
@@ -322,8 +313,7 @@ def run_analysis():
                         change_pct = 0.0
 
                     # ==============================
-                    # 시그널 1: 종가 강도 (최대 25점)
-                    # 당일 고가 대비 종가 위치 → 고가 근처 마감 = 강한 매수세
+                    # 시그널 1: 종가 강도 (최대 20점)
                     # ==============================
                     strength_score = 0
                     if (latest_high - latest_low) > 0:
@@ -332,18 +322,18 @@ def run_analysis():
                         close_strength = 50.0
 
                     if close_strength >= 90:
-                        strength_score = 25
-                    elif close_strength >= 80:
                         strength_score = 20
+                    elif close_strength >= 80:
+                        strength_score = 16
                     elif close_strength >= 70:
-                        strength_score = 15
+                        strength_score = 12
                     elif close_strength >= 60:
-                        strength_score = 10
+                        strength_score = 8
                     elif close_strength >= 50:
-                        strength_score = 5
+                        strength_score = 4
 
                     # ==============================
-                    # 시그널 2: 거래량 급증 (최대 20점)
+                    # 시그널 2: 거래량 급증 - 20일 (최대 15점)
                     # ==============================
                     vol_score = 0
                     vol_ratio = 0.0
@@ -351,15 +341,14 @@ def run_analysis():
                         avg_vol_20 = np.mean(volume[-21:-1])
                         if avg_vol_20 > 0:
                             vol_ratio = latest_volume / avg_vol_20
-                            if vol_ratio >= 5.0: vol_score = 20
-                            elif vol_ratio >= 3.0: vol_score = 17
-                            elif vol_ratio >= 2.0: vol_score = 14
-                            elif vol_ratio >= 1.5: vol_score = 10
-                            elif vol_ratio >= 1.2: vol_score = 7
+                            if vol_ratio >= 5.0: vol_score = 15
+                            elif vol_ratio >= 3.0: vol_score = 12
+                            elif vol_ratio >= 2.0: vol_score = 10
+                            elif vol_ratio >= 1.5: vol_score = 7
+                            elif vol_ratio >= 1.2: vol_score = 4
 
                     # ==============================
-                    # 시그널 3: 양갭 이력 (최대 25점)
-                    # 최근 20일 중 시가 > 전일종가 비율
+                    # 시그널 3: 양갭 이력 (최대 20점)
                     # ==============================
                     gap_score = 0
                     gap_up_count = 0
@@ -379,14 +368,13 @@ def run_analysis():
 
                         if gap_total > 0:
                             gap_ratio = gap_up_count / gap_total
-                            if gap_ratio >= 0.7: gap_score = 25
-                            elif gap_ratio >= 0.6: gap_score = 20
-                            elif gap_ratio >= 0.5: gap_score = 15
-                            elif gap_ratio >= 0.4: gap_score = 10
+                            if gap_ratio >= 0.7: gap_score = 20
+                            elif gap_ratio >= 0.6: gap_score = 16
+                            elif gap_ratio >= 0.5: gap_score = 12
+                            elif gap_ratio >= 0.4: gap_score = 8
 
                     # ==============================
                     # 시그널 4: 추세 정렬 (최대 15점)
-                    # MA5 > MA20 > MA60 골든 정렬
                     # ==============================
                     trend_score = 0
                     ma5 = np.mean(close[-5:]) if len(close) >= 5 else latest_close
@@ -409,6 +397,19 @@ def run_analysis():
                         sector_changes[sector] = []
                     sector_changes[sector].append(change_pct)
 
+                    # ==============================
+                    # 시그널 6: 100일 거래량 폭증 (최대 15점)
+                    # ==============================
+                    vol100_score = 0
+                    vol100_ratio = 0.0
+                    if len(volume) >= 101:
+                        avg_vol_100 = np.mean(volume[-101:-1])
+                        if avg_vol_100 > 0:
+                            vol100_ratio = latest_volume / avg_vol_100
+                            if vol100_ratio >= 5.0: vol100_score = 15
+                            elif vol100_ratio >= 4.0: vol100_score = 12
+                            elif vol100_ratio >= 3.0: vol100_score = 9
+
                     # 양봉 여부
                     is_bullish = latest_close > latest_open
 
@@ -423,6 +424,7 @@ def run_analysis():
                         "등락률": round(change_pct, 2),
                         "거래량": int(latest_volume),
                         "거래량비율": round(vol_ratio, 1),
+                        "거래량100비율": round(vol100_ratio, 1),
                         "종가강도": round(close_strength, 1),
                         "양갭횟수": gap_up_count,
                         "갭총일수": gap_total,
@@ -435,6 +437,7 @@ def run_analysis():
                         "vol_score": vol_score,
                         "gap_score": gap_score,
                         "trend_score": trend_score,
+                        "vol100_score": vol100_score,
                     })
                 except Exception:
                     continue
@@ -459,7 +462,7 @@ def run_analysis():
     result_df["종합점수"] = (
         result_df["strength_score"] + result_df["vol_score"]
         + result_df["gap_score"] + result_df["trend_score"]
-        + result_df["sector_score"]
+        + result_df["sector_score"] + result_df["vol100_score"]
     )
 
     return result_df
@@ -470,8 +473,8 @@ status_placeholder = st.empty()
 
 try:
     status_placeholder.markdown(
-        '<div class="status-box">⏳ 종가베팅 시그널 분석 중...<br>'
-        '종가강도 · 거래량 · 갭이력 · 추세정렬 · 섹터동반</div>',
+        '<div class="status-box">⏳ 종가베팅 6대 시그널 분석 중...<br>'
+        '종가강도 · 거래량(20일) · 양갭이력 · 추세정렬 · 섹터동반 · 거래량(100일)</div>',
         unsafe_allow_html=True,
     )
 
@@ -499,11 +502,12 @@ try:
         # 범례
         st.markdown("""
         <div class="legend-box">
-            <span class="signal-tag tag-strength">💪 종가강도</span> 당일 고가 대비 종가 위치 (고가 근처=매수세 강함)<br>
-            <span class="signal-tag tag-vol">📊 거래량급증</span> 20일 평균 대비 거래량 폭증<br>
-            <span class="signal-tag tag-gap">🌅 양갭이력</span> 최근 20일 익일시가 양갭 빈도<br>
-            <span class="signal-tag tag-trend">📐 추세정렬</span> MA5 > MA20 > MA60 골든 정렬<br>
-            <span class="signal-tag tag-sector">🏭 섹터동반</span> 동일 섹터 동반 상승
+            <span class="signal-tag tag-strength">💪 종가강도</span> 당일 고가 대비 종가 위치 (20점)<br>
+            <span class="signal-tag tag-vol">📊 거래량급증</span> 20일 평균 대비 거래량 폭증 (15점)<br>
+            <span class="signal-tag tag-gap">🌅 양갭이력</span> 최근 20일 익일시가 양갭 빈도 (20점)<br>
+            <span class="signal-tag tag-trend">📐 추세정렬</span> MA5 > MA20 > MA60 골든 정렬 (15점)<br>
+            <span class="signal-tag tag-sector">🏭 섹터동반</span> 동일 섹터 동반 상승 (15점)<br>
+            <span class="signal-tag tag-vol100">🔥 100일폭증</span> 100일 평균 대비 3배↑ 거래량 (15점)
         </div>
         """, unsafe_allow_html=True)
 
@@ -535,6 +539,8 @@ try:
                 tags += f'<span class="signal-tag tag-trend">📐 MA5>20</span>'
             if row["sector_score"] > 0:
                 tags += f'<span class="signal-tag tag-sector">🏭 {row["섹터"]}</span>'
+            if row["vol100_score"] > 0:
+                tags += f'<span class="signal-tag tag-vol100">🔥 100일 x{row["거래량100비율"]}</span>'
 
             change_color = "#ff4444" if row["등락률"] >= 0 else "#4488ff"
             change_str = f"{row['등락률']:+.2f}%"
@@ -572,6 +578,6 @@ except Exception as e:
     status_placeholder.error(f"⚠️ 엔진 오류: {e}")
 
 st.markdown(
-    '<div class="footer">Produced by Hong-Ik Closing Bet Scanner • v1.0</div>',
+    '<div class="footer">Produced by Hong-Ik Closing Bet Scanner • v2.0</div>',
     unsafe_allow_html=True,
 )
