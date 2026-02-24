@@ -1,6 +1,6 @@
 """
-홍익 종가베팅 스캐너 - 텔레그램 알림
-매일 15:20 KST 자동 실행 → 종가매수 추천 종목 전송
+홍익 종가베팅 스캐너 - 텔레그램 알림 v2.0
+6대 시그널 분석 · 매일 15:20 KST 자동 실행
 """
 
 import os
@@ -127,7 +127,7 @@ def run_analysis():
         batch = tickers[i:i + batch_size]
         try:
             data = yf.download(
-                batch, period="60d", group_by="ticker",
+                batch, period="120d", group_by="ticker",
                 progress=False, threads=True
             )
             if data.empty:
@@ -161,32 +161,32 @@ def run_analysis():
                     else:
                         change_pct = 0.0
 
-                    # 시그널 1: 종가 강도
+                    # 시그널 1: 종가 강도 (20점)
                     strength_score = 0
                     if (latest_high - latest_low) > 0:
                         close_strength = (latest_close - latest_low) / (latest_high - latest_low) * 100
                     else:
                         close_strength = 50.0
-                    if close_strength >= 90: strength_score = 25
-                    elif close_strength >= 80: strength_score = 20
-                    elif close_strength >= 70: strength_score = 15
-                    elif close_strength >= 60: strength_score = 10
-                    elif close_strength >= 50: strength_score = 5
+                    if close_strength >= 90: strength_score = 20
+                    elif close_strength >= 80: strength_score = 16
+                    elif close_strength >= 70: strength_score = 12
+                    elif close_strength >= 60: strength_score = 8
+                    elif close_strength >= 50: strength_score = 4
 
-                    # 시그널 2: 거래량 급증
+                    # 시그널 2: 거래량 급증 20일 (15점)
                     vol_score = 0
                     vol_ratio = 0.0
                     if len(volume) >= 21:
                         avg_vol_20 = np.mean(volume[-21:-1])
                         if avg_vol_20 > 0:
                             vol_ratio = volume[-1] / avg_vol_20
-                            if vol_ratio >= 5.0: vol_score = 20
-                            elif vol_ratio >= 3.0: vol_score = 17
-                            elif vol_ratio >= 2.0: vol_score = 14
-                            elif vol_ratio >= 1.5: vol_score = 10
-                            elif vol_ratio >= 1.2: vol_score = 7
+                            if vol_ratio >= 5.0: vol_score = 15
+                            elif vol_ratio >= 3.0: vol_score = 12
+                            elif vol_ratio >= 2.0: vol_score = 10
+                            elif vol_ratio >= 1.5: vol_score = 7
+                            elif vol_ratio >= 1.2: vol_score = 4
 
-                    # 시그널 3: 양갭 이력
+                    # 시그널 3: 양갭 이력 (20점)
                     gap_score = 0
                     gap_up_count = 0
                     gap_avg = 0.0
@@ -203,12 +203,12 @@ def run_analysis():
                         gap_avg = np.mean([g for g in gaps if g > 0]) if gap_up_count > 0 else 0
                         if gap_total > 0:
                             gap_ratio = gap_up_count / gap_total
-                            if gap_ratio >= 0.7: gap_score = 25
-                            elif gap_ratio >= 0.6: gap_score = 20
-                            elif gap_ratio >= 0.5: gap_score = 15
-                            elif gap_ratio >= 0.4: gap_score = 10
+                            if gap_ratio >= 0.7: gap_score = 20
+                            elif gap_ratio >= 0.6: gap_score = 16
+                            elif gap_ratio >= 0.5: gap_score = 12
+                            elif gap_ratio >= 0.4: gap_score = 8
 
-                    # 시그널 4: 추세 정렬
+                    # 시그널 4: 추세 정렬 (15점)
                     trend_score = 0
                     ma5 = np.mean(close[-5:]) if len(close) >= 5 else latest_close
                     ma20 = np.mean(close[-20:]) if len(close) >= 20 else latest_close
@@ -221,6 +221,17 @@ def run_analysis():
                         sector_changes[sector] = []
                     sector_changes[sector].append(change_pct)
 
+                    # 시그널 6: 100일 거래량 폭증 (15점)
+                    vol100_score = 0
+                    vol100_ratio = 0.0
+                    if len(volume) >= 101:
+                        avg_vol_100 = np.mean(volume[-101:-1])
+                        if avg_vol_100 > 0:
+                            vol100_ratio = volume[-1] / avg_vol_100
+                            if vol100_ratio >= 5.0: vol100_score = 15
+                            elif vol100_ratio >= 4.0: vol100_score = 12
+                            elif vol100_ratio >= 3.0: vol100_score = 9
+
                     all_results.append({
                         "종목명": name,
                         "섹터": sector,
@@ -228,6 +239,7 @@ def run_analysis():
                         "등락률": round(change_pct, 2),
                         "종가강도": round(close_strength, 1),
                         "거래량비율": round(vol_ratio, 1),
+                        "거래량100비율": round(vol100_ratio, 1),
                         "양갭횟수": gap_up_count,
                         "갭총일수": gap_total,
                         "평균갭": round(gap_avg, 2),
@@ -235,6 +247,7 @@ def run_analysis():
                         "vol_score": vol_score,
                         "gap_score": gap_score,
                         "trend_score": trend_score,
+                        "vol100_score": vol100_score,
                     })
                 except Exception:
                     continue
@@ -258,7 +271,7 @@ def run_analysis():
     result_df["종합점수"] = (
         result_df["strength_score"] + result_df["vol_score"]
         + result_df["gap_score"] + result_df["trend_score"]
-        + result_df["sector_score"]
+        + result_df["sector_score"] + result_df["vol100_score"]
     )
     return result_df
 
@@ -267,7 +280,7 @@ def build_message(result_df):
     now_kst = datetime.now(KST)
     weekday = ["월", "화", "수", "목", "금", "토", "일"][now_kst.weekday()]
 
-    msg = f"🎯 종가베팅 리포트\n"
+    msg = f"🎯 종가베팅 리포트 v2.0\n"
     msg += f"📅 {now_kst.strftime('%Y.%m.%d')} ({weekday}) {now_kst.strftime('%H:%M')}\n"
     msg += f"━━━━━━━━━━━━━━━\n"
     msg += f"💡 종가매수 → 익일시가 갭수익\n\n"
@@ -288,15 +301,17 @@ def build_message(result_df):
 
             signals = []
             if row["strength_score"] > 0:
-                signals.append(f"💪종가강도 {row['종가강도']:.0f}%")
+                signals.append(f"💪종가 {row['종가강도']:.0f}%")
             if row["vol_score"] > 0:
-                signals.append(f"📊거래량 x{row['거래량비율']}")
+                signals.append(f"📊20일 x{row['거래량비율']}")
             if row["gap_score"] > 0:
                 signals.append(f"🌅양갭 {row['양갭횟수']}/{row['갭총일수']}일")
             if row["trend_score"] >= 15:
                 signals.append(f"📐골든정렬")
             if row["sector_score"] > 0:
                 signals.append(f"🏭섹터동반")
+            if row["vol100_score"] > 0:
+                signals.append(f"🔥100일 x{row['거래량100비율']}")
 
             if signals:
                 msg += f"   {' | '.join(signals)}\n"
@@ -307,7 +322,7 @@ def build_message(result_df):
 
     msg += f"━━━━━━━━━━━━━━━\n"
     msg += f"⚠️ 투자 참고용이며 매수 추천이 아닙니다.\n"
-    msg += f"🎯 홍익 종가베팅 스캐너 v1.0"
+    msg += f"🎯 홍익 종가베팅 스캐너 v2.0"
 
     return msg
 
@@ -323,7 +338,7 @@ def send_telegram(message):
 
 
 if __name__ == "__main__":
-    print("🔍 종가베팅 분석 시작...")
+    print("🔍 종가베팅 6대 시그널 분석 시작...")
     result_df = run_analysis()
     if result_df.empty:
         print("❌ 데이터를 가져올 수 없습니다.")
