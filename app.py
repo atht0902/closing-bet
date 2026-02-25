@@ -123,7 +123,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ===== 헤더 =====
 st.markdown("""
 <div class="main-header">
     <h1>🎯 홍익 종가베팅 스캐너</h1>
@@ -131,7 +130,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ===== 전략 설명 =====
 st.markdown("""
 <div class="strategy-box">
     📌 <b>전략:</b> 오늘 종가(15:20~15:30)에 매수 → 내일 시가(09:00)에 매도<br>
@@ -140,9 +138,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ===== 종목 + 섹터 매핑 =====
 SECTOR_MAP = {
-    # 반도체
     "005930.KS": ("삼성전자", "반도체"),
     "000660.KS": ("SK하이닉스", "반도체"),
     "009150.KS": ("삼성전기", "반도체"),
@@ -157,7 +153,6 @@ SECTOR_MAP = {
     "095340.KQ": ("ISC", "반도체"),
     "039030.KQ": ("이오테크닉스", "반도체"),
     "140860.KQ": ("파크시스템스", "반도체"),
-    # 2차전지
     "373220.KS": ("LG에너지솔루션", "2차전지"),
     "051910.KS": ("LG화학", "2차전지"),
     "006400.KS": ("삼성SDI", "2차전지"),
@@ -167,14 +162,12 @@ SECTOR_MAP = {
     "383310.KQ": ("에코프로에이치엔", "2차전지"),
     "078600.KQ": ("대주전자재료", "2차전지"),
     "009830.KS": ("한화솔루션", "2차전지"),
-    # 자동차
     "005380.KS": ("현대차", "자동차"),
     "000270.KS": ("기아", "자동차"),
     "012330.KS": ("현대모비스", "자동차"),
     "004020.KS": ("현대제철", "자동차"),
     "161390.KS": ("한국타이어앤테크놀로지", "자동차"),
     "329180.KS": ("현대오토에버", "자동차"),
-    # 바이오
     "207940.KS": ("삼성바이오로직스", "바이오"),
     "068270.KS": ("셀트리온", "바이오"),
     "000100.KS": ("유한양행", "바이오"),
@@ -187,14 +180,12 @@ SECTOR_MAP = {
     "141080.KQ": ("레고켐바이오", "바이오"),
     "298380.KQ": ("에이비엘바이오", "바이오"),
     "214150.KQ": ("클래시스", "바이오"),
-    # IT/플랫폼
     "035420.KS": ("NAVER", "IT/플랫폼"),
     "035720.KS": ("카카오", "IT/플랫폼"),
     "018260.KS": ("삼성에스디에스", "IT/플랫폼"),
     "377300.KQ": ("카카오페이", "IT/플랫폼"),
     "042000.KQ": ("카페24", "IT/플랫폼"),
     "067160.KQ": ("아프리카TV", "IT/플랫폼"),
-    # 게임/엔터
     "036570.KS": ("엔씨소프트", "게임/엔터"),
     "259960.KQ": ("크래프톤", "게임/엔터"),
     "263750.KQ": ("펄어비스", "게임/엔터"),
@@ -204,7 +195,6 @@ SECTOR_MAP = {
     "041510.KQ": ("에스엠", "게임/엔터"),
     "035900.KQ": ("JYP Ent.", "게임/엔터"),
     "253450.KQ": ("스튜디오드래곤", "게임/엔터"),
-    # 금융
     "105560.KS": ("KB금융", "금융"),
     "055550.KS": ("신한지주", "금융"),
     "086790.KS": ("하나금융지주", "금융"),
@@ -215,32 +205,27 @@ SECTOR_MAP = {
     "032830.KS": ("삼성생명", "금융"),
     "006800.KS": ("미래에셋증권", "금융"),
     "016360.KS": ("삼성증권", "금융"),
-    # 조선/방산
     "009540.KS": ("한국조선해양", "조선/방산"),
     "267250.KS": ("현대중공업", "조선/방산"),
     "042660.KS": ("한화오션", "조선/방산"),
     "010140.KS": ("삼성중공업", "조선/방산"),
     "047810.KS": ("한국항공우주", "조선/방산"),
-    # 철강/소재
     "005490.KS": ("POSCO홀딩스", "철강/소재"),
     "010130.KS": ("고려아연", "철강/소재"),
     "011170.KS": ("롯데케미칼", "철강/소재"),
     "011790.KS": ("SKC", "철강/소재"),
     "357780.KQ": ("솔브레인", "철강/소재"),
-    # 유통/소비재
     "139480.KS": ("이마트", "유통/소비재"),
     "002790.KS": ("아모레퍼시픽", "유통/소비재"),
     "271560.KS": ("오리온", "유통/소비재"),
     "021240.KS": ("코웨이", "유통/소비재"),
     "007070.KS": ("GS리테일", "유통/소비재"),
     "008770.KS": ("호텔신라", "유통/소비재"),
-    # 에너지/인프라
     "096770.KS": ("SK이노베이션", "에너지/인프라"),
     "010950.KS": ("S-Oil", "에너지/인프라"),
     "015760.KS": ("한국전력", "에너지/인프라"),
     "036460.KS": ("한국가스공사", "에너지/인프라"),
     "034020.KS": ("두산에너빌리티", "에너지/인프라"),
-    # 지주/통신
     "034730.KS": ("SK", "지주/통신"),
     "003550.KS": ("LG", "지주/통신"),
     "028260.KS": ("삼성물산", "지주/통신"),
@@ -248,14 +233,12 @@ SECTOR_MAP = {
     "030200.KS": ("KT", "지주/통신"),
     "078930.KS": ("GS", "지주/통신"),
     "006260.KS": ("LS", "지주/통신"),
-    # 물류/운송
     "011200.KS": ("HMM", "물류/운송"),
     "003490.KS": ("대한항공", "물류/운송"),
     "180640.KS": ("한진칼", "물류/운송"),
     "047050.KS": ("포스코인터내셔널", "물류/운송"),
 }
 
-# ===== 필터 UI =====
 col1, col2 = st.columns(2)
 with col1:
     sector_options = ["전체"] + sorted(set(v[1] for v in SECTOR_MAP.values()))
@@ -264,7 +247,6 @@ with col2:
     min_score = st.selectbox("🎯 최소 점수", ["전체", "50+", "70+"])
 
 
-# ===== 분석 엔진 =====
 @st.cache_data(ttl=300)
 def run_analysis():
     tickers = list(SECTOR_MAP.keys())
@@ -312,9 +294,6 @@ def run_analysis():
                     else:
                         change_pct = 0.0
 
-                    # ==============================
-                    # 시그널 1: 종가 강도 (최대 20점)
-                    # ==============================
                     strength_score = 0
                     if (latest_high - latest_low) > 0:
                         close_strength = (latest_close - latest_low) / (latest_high - latest_low) * 100
@@ -332,9 +311,6 @@ def run_analysis():
                     elif close_strength >= 50:
                         strength_score = 4
 
-                    # ==============================
-                    # 시그널 2: 거래량 급증 - 20일 (최대 15점)
-                    # ==============================
                     vol_score = 0
                     vol_ratio = 0.0
                     if len(volume) >= 21:
@@ -347,9 +323,6 @@ def run_analysis():
                             elif vol_ratio >= 1.5: vol_score = 7
                             elif vol_ratio >= 1.2: vol_score = 4
 
-                    # ==============================
-                    # 시그널 3: 양갭 이력 (최대 20점)
-                    # ==============================
                     gap_score = 0
                     gap_up_count = 0
                     gap_avg = 0.0
@@ -373,9 +346,6 @@ def run_analysis():
                             elif gap_ratio >= 0.5: gap_score = 12
                             elif gap_ratio >= 0.4: gap_score = 8
 
-                    # ==============================
-                    # 시그널 4: 추세 정렬 (최대 15점)
-                    # ==============================
                     trend_score = 0
                     ma5 = np.mean(close[-5:]) if len(close) >= 5 else latest_close
                     ma20 = np.mean(close[-20:]) if len(close) >= 20 else latest_close
@@ -390,16 +360,10 @@ def run_analysis():
                     elif latest_close > ma20:
                         trend_score = 5
 
-                    # ==============================
-                    # 시그널 5: 섹터 동반상승 (최대 15점)
-                    # ==============================
                     if sector not in sector_changes:
                         sector_changes[sector] = []
                     sector_changes[sector].append(change_pct)
 
-                    # ==============================
-                    # 시그널 6: 100일 거래량 폭증 (최대 15점)
-                    # ==============================
                     vol100_score = 0
                     vol100_ratio = 0.0
                     if len(volume) >= 101:
@@ -410,10 +374,7 @@ def run_analysis():
                             elif vol100_ratio >= 4.0: vol100_score = 12
                             elif vol100_ratio >= 3.0: vol100_score = 9
 
-                    # 양봉 여부
                     is_bullish = latest_close > latest_open
-
-                    # 가격 포맷
                     price_str = f"{int(latest_close):,}원"
 
                     all_results.append({
@@ -449,7 +410,6 @@ def run_analysis():
 
     result_df = pd.DataFrame(all_results)
 
-    # 시그널 5: 섹터 동반 상승
     sector_scores = {}
     for sector, changes in sector_changes.items():
         up_ratio = sum(1 for c in changes if c > 0) / len(changes) if changes else 0
@@ -468,7 +428,6 @@ def run_analysis():
     return result_df
 
 
-# ===== 실행 =====
 status_placeholder = st.empty()
 
 try:
@@ -483,7 +442,6 @@ try:
     if result_df.empty:
         status_placeholder.warning("📭 데이터를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.")
     else:
-        # 필터 적용
         if selected_sector != "전체":
             result_df = result_df[result_df["섹터"] == selected_sector]
 
@@ -499,7 +457,6 @@ try:
         now_kst = datetime.now(KST)
         st.success(f"✅ {now_kst.strftime('%Y.%m.%d %H:%M')} 분석 완료 | {len(result_df)}종목 감지")
 
-        # 범례
         st.markdown("""
         <div class="legend-box">
             <span class="signal-tag tag-strength">💪 종가강도</span> 당일 고가 대비 종가 위치 (20점)<br>
@@ -511,7 +468,6 @@ try:
         </div>
         """, unsafe_allow_html=True)
 
-        # 카드형 결과 출력
         for _, row in result_df.iterrows():
             score = row["종합점수"]
 
@@ -525,7 +481,6 @@ try:
                 card_class = "score-low"
                 grade = "💤"
 
-            # 시그널 태그
             tags = ""
             if row["strength_score"] > 0:
                 tags += f'<span class="signal-tag tag-strength">💪 {row["종가강도"]:.0f}%</span>'
@@ -545,10 +500,8 @@ try:
             change_color = "#ff4444" if row["등락률"] >= 0 else "#4488ff"
             change_str = f"{row['등락률']:+.2f}%"
 
-            # 양봉/음봉
             candle = "🟢 양봉" if row["양봉"] else "🔴 음봉"
 
-            # 갭 통계
             gap_stat_str = f"양갭 {row['양갭횟수']}/{row['갭총일수']}일 (평균 +{row['평균갭']:.2f}%)" if row["평균갭"] > 0 else "양갭 이력 부족"
 
             st.markdown(f"""
