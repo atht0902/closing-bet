@@ -2,12 +2,29 @@ name: Closing Bet Alert
 
 on:
   schedule:
+    - cron: '10 0 * * 1-5'
     - cron: '20 5 * * 1-5'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: '실행 모드'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - result
+          - recommend
+
+permissions:
+  contents: write
 
 jobs:
-  notify:
+  morning-result:
     runs-on: ubuntu-latest
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '10 0 * * 1-5') ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.mode == 'both' || github.event.inputs.mode == 'result'))
     steps:
       - uses: actions/checkout@v4
 
@@ -19,8 +36,38 @@ jobs:
       - name: Install dependencies
         run: pip install yfinance pandas numpy requests
 
-      - name: Run notification
+      - name: Run result report
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: python notify_result.py
+
+  afternoon-recommend:
+    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '20 5 * * 1-5') ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.mode == 'both' || github.event.inputs.mode == 'recommend'))
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance pandas numpy requests
+
+      - name: Run recommendation & save picks
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: python notify.py
+
+      - name: Commit picks JSON to repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --staged --quiet || git commit -m "📊 picks $(date -u +%Y-%m-%d)"
+          git push
