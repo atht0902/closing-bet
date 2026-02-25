@@ -1,19 +1,25 @@
 """
 홍익 종가베팅 스캐너 - 텔레그램 알림 v2.0
-6대 시그널 분석 · 매일 15:20 KST 자동 실행
+매일 15:20 KST 자동 실행
+1) 6대 시그널 분석 → 텔레그램 발송
+2) 추천 종목을 data/picks_YYYY-MM-DD.json 에 저장
+3) 7일 지난 JSON 자동 삭제
 """
 
 import os
+import json
+import glob
 import requests
 import yfinance as yf
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta, timezone
 
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "여기에_봇_토큰_입력")
-CHAT_ID = os.environ.get("CHAT_ID", "여기에_채팅방_ID_입력")
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
+CHAT_ID = os.environ.get("CHAT_ID", "")
 MIN_SCORE = 50
 KST = timezone(timedelta(hours=9))
+DATA_DIR = "data"
 
 SECTOR_MAP = {
     "005930.KS": ("삼성전자", "반도체"),
@@ -234,6 +240,7 @@ def run_analysis():
 
                     all_results.append({
                         "종목명": name,
+                        "티커": ticker,
                         "섹터": sector,
                         "현재가": int(latest_close),
                         "등락률": round(change_pct, 2),
@@ -274,6 +281,51 @@ def run_analysis():
         + result_df["sector_score"] + result_df["vol100_score"]
     )
     return result_df
+
+
+def save_picks(result_df):
+    """추천 종목을 JSON으로 저장"""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    today = datetime.now(KST).strftime("%Y-%m-%d")
+
+    top = result_df[result_df["종합점수"] >= MIN_SCORE].sort_values("종합점수", ascending=False).head(10)
+
+    picks = []
+    for _, row in top.iterrows():
+        picks.append({
+            "종목명": row["종목명"],
+            "티커": row["티커"],
+            "섹터": row["섹터"],
+            "종가": row["현재가"],
+            "점수": int(row["종합점수"]),
+        })
+
+    filepath = os.path.join(DATA_DIR, f"picks_{today}.json")
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump({
+            "date": today,
+            "picks": picks,
+        }, f, ensure_ascii=False, indent=2)
+
+    print(f"✅ 추천 종목 저장: {filepath} ({len(picks)}종목)")
+    return filepath
+
+
+def cleanup_old_picks():
+    """7일 지난 JSON 삭제"""
+    cutoff = datetime.now(KST) - timedelta(days=7)
+    pattern = os.path.join(DATA_DIR, "picks_*.json")
+
+    for filepath in glob.glob(pattern):
+        filename = os.path.basename(filepath)
+        try:
+            date_str = filename.replace("picks_", "").replace(".json", "")
+            file_date = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=KST)
+            if file_date < cutoff:
+                os.remove(filepath)
+                print(f"🗑️ 오래된 파일 삭제: {filename}")
+        except Exception:
+            continue
 
 
 def build_message(result_df):
@@ -348,3 +400,9 @@ if __name__ == "__main__":
         print(message)
         print()
         send_telegram(message)
+
+        # 추천 종목 JSON 저장
+        save_picks(result_df)
+
+        # 7일 지난 파일 정리
+        cleanup_old_picks()
