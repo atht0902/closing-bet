@@ -8,7 +8,6 @@ from datetime import datetime, timedelta, timezone
 
 KST = timezone(timedelta(hours=9))
 
-# ===== NXT 불가종목 필터 =====
 def load_nxt_excluded():
     try:
         path = os.path.join(os.path.dirname(__file__), 'nxt_stocks.json')
@@ -24,10 +23,6 @@ def is_nxt(ticker):
     code = ticker.split('.')[0] if '.' in ticker else ticker
     return code not in NXT_EXCLUDED
 
-def nxt_label(ticker):
-    return "🟢NXT" if is_nxt(ticker) else "🔴KRX"
-
-# ticker 역매핑 (종목명 → ticker)
 NAME_TO_TICKER = {}
 
 st.set_page_config(page_title="홍익 종가베팅 스캐너", layout="centered")
@@ -39,56 +34,15 @@ st.markdown("""
         color: #e0e0e0;
     }
     [data-testid="stHeader"] { background: transparent; }
-    .main-header {
-        text-align: center;
-        padding: 1.2rem 0.5rem 0.8rem;
-    }
-    .main-header h1 {
-        font-size: clamp(1.2rem, 4.5vw, 1.8rem);
-        color: #ff6b00;
-        margin: 0;
-    }
-    .main-header p {
-        color: #888;
-        font-size: clamp(0.65rem, 2.2vw, 0.8rem);
-        margin-top: 4px;
-    }
-    .status-box {
-        padding: 14px;
-        border-radius: 12px;
-        border: 1px solid rgba(255,107,0,0.3);
-        text-align: center;
-        background: rgba(255,107,0,0.05);
-        margin: 10px 0;
-        font-size: 0.9rem;
-    }
-    .score-card {
-        padding: 10px 14px;
-        border-radius: 10px;
-        margin: 6px 0;
-        font-size: clamp(0.73rem, 2.4vw, 0.86rem);
-        line-height: 1.6;
-    }
-    .score-high {
-        background: rgba(255, 68, 68, 0.15);
-        border-left: 4px solid #ff4444;
-    }
-    .score-mid {
-        background: rgba(255, 165, 0, 0.12);
-        border-left: 4px solid #ffa500;
-    }
-    .score-low {
-        background: rgba(100, 100, 100, 0.1);
-        border-left: 4px solid #666;
-    }
-    .signal-tag {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 20px;
-        font-size: 0.68rem;
-        margin: 2px 2px;
-        font-weight: 600;
-    }
+    .main-header { text-align: center; padding: 1.2rem 0.5rem 0.8rem; }
+    .main-header h1 { font-size: clamp(1.2rem, 4.5vw, 1.8rem); color: #ff6b00; margin: 0; }
+    .main-header p { color: #888; font-size: clamp(0.65rem, 2.2vw, 0.8rem); margin-top: 4px; }
+    .status-box { padding: 14px; border-radius: 12px; border: 1px solid rgba(255,107,0,0.3); text-align: center; background: rgba(255,107,0,0.05); margin: 10px 0; font-size: 0.9rem; }
+    .score-card { padding: 10px 14px; border-radius: 10px; margin: 6px 0; font-size: clamp(0.73rem, 2.4vw, 0.86rem); line-height: 1.6; }
+    .score-high { background: rgba(255, 68, 68, 0.15); border-left: 4px solid #ff4444; }
+    .score-mid { background: rgba(255, 165, 0, 0.12); border-left: 4px solid #ffa500; }
+    .score-low { background: rgba(100, 100, 100, 0.1); border-left: 4px solid #666; }
+    .signal-tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.68rem; margin: 2px 2px; font-weight: 600; }
     .tag-strength { background: rgba(255,107,0,0.2); color: #ff8c40; }
     .tag-vol { background: rgba(0,150,255,0.2); color: #4dc9f6; }
     .tag-vol100 { background: rgba(255,50,50,0.2); color: #ff6666; }
@@ -97,55 +51,13 @@ st.markdown("""
     .tag-sector { background: rgba(255,215,0,0.2); color: #ffd700; }
     .tag-nxt-ok { background: rgba(0,200,0,0.2); color: #44ff44; }
     .tag-nxt-no { background: rgba(255,50,50,0.15); color: #ff6666; }
-    .detail-row {
-        font-size: clamp(0.65rem, 2.1vw, 0.76rem);
-        color: #999;
-        margin-top: 2px;
-    }
-    .legend-box {
-        background: rgba(255,255,255,0.03);
-        border: 1px solid #333;
-        border-radius: 10px;
-        padding: 12px;
-        margin: 8px 0 16px;
-        font-size: clamp(0.65rem, 2.1vw, 0.78rem);
-        color: #aaa;
-        line-height: 1.7;
-    }
-    .strategy-box {
-        background: rgba(255,107,0,0.08);
-        border: 1px solid rgba(255,107,0,0.25);
-        border-radius: 10px;
-        padding: 14px;
-        margin: 10px 0;
-        font-size: clamp(0.7rem, 2.2vw, 0.82rem);
-        color: #ddd;
-        line-height: 1.8;
-    }
-    .stSelectbox label {
-        color: #ff6b00 !important;
-        font-weight: 600;
-        font-size: 0.85rem;
-    }
-    .footer {
-        text-align: center;
-        color: #555;
-        font-size: 0.75rem;
-        padding: 20px 0 10px;
-        border-top: 1px solid #222;
-        margin-top: 20px;
-    }
+    .detail-row { font-size: clamp(0.65rem, 2.1vw, 0.76rem); color: #999; margin-top: 2px; }
+    .legend-box { background: rgba(255,255,255,0.03); border: 1px solid #333; border-radius: 10px; padding: 12px; margin: 8px 0 16px; font-size: clamp(0.65rem, 2.1vw, 0.78rem); color: #aaa; line-height: 1.7; }
+    .strategy-box { background: rgba(255,107,0,0.08); border: 1px solid rgba(255,107,0,0.25); border-radius: 10px; padding: 14px; margin: 10px 0; font-size: clamp(0.7rem, 2.2vw, 0.82rem); color: #ddd; line-height: 1.8; }
+    .stSelectbox label { color: #ff6b00 !important; font-weight: 600; font-size: 0.85rem; }
+    .footer { text-align: center; color: #555; font-size: 0.75rem; padding: 20px 0 10px; border-top: 1px solid #222; margin-top: 20px; }
     [data-testid="stHorizontalBlock"] { gap: 0.5rem; }
-    .disclaimer {
-        background: rgba(255,50,50,0.08);
-        border: 1px solid rgba(255,50,50,0.2);
-        border-radius: 8px;
-        padding: 10px;
-        font-size: 0.7rem;
-        color: #cc8888;
-        text-align: center;
-        margin: 10px 0;
-    }
+    .disclaimer { background: rgba(255,50,50,0.08); border: 1px solid rgba(255,50,50,0.2); border-radius: 8px; padding: 10px; font-size: 0.7rem; color: #cc8888; text-align: center; margin: 10px 0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -265,11 +177,9 @@ SECTOR_MAP = {
     "047050.KS": ("포스코인터내셔널", "물류/운송"),
 }
 
-# 종목명 → ticker 역매핑 생성
 for tk, (nm, _) in SECTOR_MAP.items():
     NAME_TO_TICKER[nm] = tk
 
-# ===== 필터 UI (NXT 필터 추가) =====
 col1, col2, col3 = st.columns(3)
 with col1:
     sector_options = ["전체"] + sorted(set(v[1] for v in SECTOR_MAP.values()))
@@ -290,60 +200,43 @@ def run_analysis():
     for i in range(0, len(tickers), batch_size):
         batch = tickers[i:i + batch_size]
         try:
-            data = yf.download(
-                batch, period="120d", group_by="ticker",
-                progress=False, threads=True
-            )
+            data = yf.download(batch, period="120d", group_by="ticker", progress=False, threads=True)
             if data.empty:
                 continue
-
             for ticker in batch:
                 try:
                     name, sector = SECTOR_MAP[ticker]
-
                     if len(batch) == 1:
                         df = data.copy()
                     else:
                         df = data[ticker].copy()
-
                     df = df.dropna(subset=["Close"])
                     if len(df) < 20:
                         continue
-
                     close = df["Close"].values
                     opens = df["Open"].values
                     high = df["High"].values
                     low = df["Low"].values
                     volume = df["Volume"].values
-
                     latest_close = close[-1]
                     latest_high = high[-1]
                     latest_low = low[-1]
                     latest_open = opens[-1]
                     latest_volume = volume[-1]
-
                     if len(close) >= 2 and close[-2] > 0:
                         change_pct = ((close[-1] - close[-2]) / close[-2]) * 100
                     else:
                         change_pct = 0.0
-
                     strength_score = 0
                     if (latest_high - latest_low) > 0:
                         close_strength = (latest_close - latest_low) / (latest_high - latest_low) * 100
                     else:
                         close_strength = 50.0
-
-                    if close_strength >= 90:
-                        strength_score = 20
-                    elif close_strength >= 80:
-                        strength_score = 16
-                    elif close_strength >= 70:
-                        strength_score = 12
-                    elif close_strength >= 60:
-                        strength_score = 8
-                    elif close_strength >= 50:
-                        strength_score = 4
-
+                    if close_strength >= 90: strength_score = 20
+                    elif close_strength >= 80: strength_score = 16
+                    elif close_strength >= 70: strength_score = 12
+                    elif close_strength >= 60: strength_score = 8
+                    elif close_strength >= 50: strength_score = 4
                     vol_score = 0
                     vol_ratio = 0.0
                     if len(volume) >= 21:
@@ -355,12 +248,10 @@ def run_analysis():
                             elif vol_ratio >= 2.0: vol_score = 10
                             elif vol_ratio >= 1.5: vol_score = 7
                             elif vol_ratio >= 1.2: vol_score = 4
-
                     gap_score = 0
                     gap_up_count = 0
                     gap_avg = 0.0
                     gap_total = 0
-
                     if len(close) >= 21 and len(opens) >= 20:
                         gaps = []
                         for j in range(1, min(21, len(close))):
@@ -371,19 +262,16 @@ def run_analysis():
                                     gap_up_count += 1
                         gap_total = len(gaps)
                         gap_avg = np.mean([g for g in gaps if g > 0]) if gap_up_count > 0 else 0
-
                         if gap_total > 0:
                             gap_ratio = gap_up_count / gap_total
                             if gap_ratio >= 0.7: gap_score = 20
                             elif gap_ratio >= 0.6: gap_score = 16
                             elif gap_ratio >= 0.5: gap_score = 12
                             elif gap_ratio >= 0.4: gap_score = 8
-
                     trend_score = 0
                     ma5 = np.mean(close[-5:]) if len(close) >= 5 else latest_close
                     ma20 = np.mean(close[-20:]) if len(close) >= 20 else latest_close
                     ma60 = np.mean(close[-60:]) if len(close) >= 60 else ma20
-
                     trend_aligned = False
                     if ma5 > ma20 > ma60:
                         trend_score = 15
@@ -392,11 +280,9 @@ def run_analysis():
                         trend_score = 10
                     elif latest_close > ma20:
                         trend_score = 5
-
                     if sector not in sector_changes:
                         sector_changes[sector] = []
                     sector_changes[sector].append(change_pct)
-
                     vol100_score = 0
                     vol100_ratio = 0.0
                     if len(volume) >= 101:
@@ -406,10 +292,8 @@ def run_analysis():
                             if vol100_ratio >= 5.0: vol100_score = 15
                             elif vol100_ratio >= 4.0: vol100_score = 12
                             elif vol100_ratio >= 3.0: vol100_score = 9
-
                     is_bullish = latest_close > latest_open
                     price_str = f"{int(latest_close):,}원"
-
                     all_results.append({
                         "ticker": ticker,
                         "종목명": name,
@@ -443,7 +327,6 @@ def run_analysis():
         return pd.DataFrame()
 
     result_df = pd.DataFrame(all_results)
-
     sector_scores = {}
     for sector, changes in sector_changes.items():
         up_ratio = sum(1 for c in changes if c > 0) / len(changes) if changes else 0
@@ -451,14 +334,12 @@ def run_analysis():
         elif up_ratio >= 0.6: sector_scores[sector] = 10
         elif up_ratio >= 0.4: sector_scores[sector] = 5
         else: sector_scores[sector] = 0
-
     result_df["sector_score"] = result_df["섹터"].map(sector_scores).fillna(0).astype(int)
     result_df["종합점수"] = (
         result_df["strength_score"] + result_df["vol_score"]
         + result_df["gap_score"] + result_df["trend_score"]
         + result_df["sector_score"] + result_df["vol100_score"]
     )
-
     return result_df
 
 
@@ -476,24 +357,17 @@ try:
     if result_df.empty:
         status_placeholder.warning("📭 데이터를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.")
     else:
-        # 섹터 필터
         if selected_sector != "전체":
             result_df = result_df[result_df["섹터"] == selected_sector]
-
-        # 점수 필터
         if min_score == "50+":
             result_df = result_df[result_df["종합점수"] >= 50]
         elif min_score == "70+":
             result_df = result_df[result_df["종합점수"] >= 70]
-
-        # NXT 필터
         if nxt_filter == "NXT 가능만":
             result_df = result_df[result_df["ticker"].apply(is_nxt)]
-
         result_df = result_df.sort_values("종합점수", ascending=False).head(20)
 
         status_placeholder.empty()
-
         now_kst = datetime.now(KST)
         nxt_count = result_df["ticker"].apply(is_nxt).sum()
         st.success(
@@ -517,7 +391,6 @@ try:
         for _, row in result_df.iterrows():
             score = row["종합점수"]
             ticker = row["ticker"]
-
             if score >= 70:
                 card_class = "score-high"
                 grade = "🔥"
@@ -527,13 +400,10 @@ try:
             else:
                 card_class = "score-low"
                 grade = "💤"
-
-            # NXT 태그
             if is_nxt(ticker):
                 nxt_tag = '<span class="signal-tag tag-nxt-ok">🟢NXT</span>'
             else:
                 nxt_tag = '<span class="signal-tag tag-nxt-no">🔴KRX</span>'
-
             tags = ""
             if row["strength_score"] > 0:
                 tags += f'<span class="signal-tag tag-strength">💪 {row["종가강도"]:.0f}%</span>'
@@ -542,19 +412,16 @@ try:
             if row["gap_score"] > 0:
                 tags += f'<span class="signal-tag tag-gap">🌅 {row["양갭횟수"]}/{row["갭총일수"]}일 양갭</span>'
             if row["trend_score"] >= 15:
-                tags += f'<span class="signal-tag tag-trend">📐 골든정렬</span>'
+                tags += '<span class="signal-tag tag-trend">📐 골든정렬</span>'
             elif row["trend_score"] >= 10:
-                tags += f'<span class="signal-tag tag-trend">📐 MA5>20</span>'
+                tags += '<span class="signal-tag tag-trend">📐 MA5>20</span>'
             if row["sector_score"] > 0:
                 tags += f'<span class="signal-tag tag-sector">🏭 {row["섹터"]}</span>'
             if row["vol100_score"] > 0:
                 tags += f'<span class="signal-tag tag-vol100">🔥 100일 x{row["거래량100비율"]}</span>'
-
             change_color = "#ff4444" if row["등락률"] >= 0 else "#4488ff"
             change_str = f"{row['등락률']:+.2f}%"
-
             candle = "🟢 양봉" if row["양봉"] else "🔴 음봉"
-
             gap_stat_str = f"양갭 {row['양갭횟수']}/{row['갭총일수']}일 (평균 +{row['평균갭']:.2f}%)" if row["평균갭"] > 0 else "양갭 이력 부족"
 
             st.markdown(f"""
