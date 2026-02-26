@@ -2,8 +2,8 @@ name: Closing Bet Alert
 
 on:
   schedule:
-    - cron: '10 0 * * 1-5'
-    - cron: '20 5 * * 1-5'
+    - cron: '5 0 * * 1-5'
+    - cron: '0 6 * * 1-5'
   workflow_dispatch:
     inputs:
       mode:
@@ -23,7 +23,7 @@ jobs:
   morning-result:
     runs-on: ubuntu-latest
     if: >-
-      (github.event_name == 'schedule' && github.event.schedule == '10 0 * * 1-5') ||
+      (github.event_name == 'schedule' && github.event.schedule == '5 0 * * 1-5') ||
       (github.event_name == 'workflow_dispatch' && (github.event.inputs.mode == 'both' || github.event.inputs.mode == 'result'))
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
   afternoon-recommend:
     runs-on: ubuntu-latest
     if: >-
-      (github.event_name == 'schedule' && github.event.schedule == '20 5 * * 1-5') ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 6 * * 1-5') ||
       (github.event_name == 'workflow_dispatch' && (github.event.inputs.mode == 'both' || github.event.inputs.mode == 'recommend'))
     steps:
       - uses: actions/checkout@v4
