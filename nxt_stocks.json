@@ -1,0 +1,8 @@
+{
+  "설명": "NXT 거래 불가종목 6자리 코드 (SECTOR_MAP 기준)",
+  "업데이트일": "2026-02-26",
+  "참고URL": "https://www.nextrade.co.kr/menu/transactionStatusConclusion/menuList.do",
+  "업데이트주기": "분기 1회 + 수시(거래량 한도 초과 제외 시)",
+  "excluded_codes": [
+  ]
+}
