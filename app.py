@@ -2,9 +2,33 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import json
+import os
 from datetime import datetime, timedelta, timezone
 
 KST = timezone(timedelta(hours=9))
+
+# ===== NXT 불가종목 필터 =====
+def load_nxt_excluded():
+    try:
+        path = os.path.join(os.path.dirname(__file__), 'nxt_stocks.json')
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            return set(data.get('excluded_codes', []))
+    except:
+        return set()
+
+NXT_EXCLUDED = load_nxt_excluded()
+
+def is_nxt(ticker):
+    code = ticker.split('.')[0] if '.' in ticker else ticker
+    return code not in NXT_EXCLUDED
+
+def nxt_label(ticker):
+    return "🟢NXT" if is_nxt(ticker) else "🔴KRX"
+
+# ticker 역매핑 (종목명 → ticker)
+NAME_TO_TICKER = {}
 
 st.set_page_config(page_title="홍익 종가베팅 스캐너", layout="centered")
 
@@ -71,6 +95,8 @@ st.markdown("""
     .tag-gap { background: rgba(0,200,100,0.2); color: #4dff91; }
     .tag-trend { background: rgba(200,0,255,0.2); color: #d48fff; }
     .tag-sector { background: rgba(255,215,0,0.2); color: #ffd700; }
+    .tag-nxt-ok { background: rgba(0,200,0,0.2); color: #44ff44; }
+    .tag-nxt-no { background: rgba(255,50,50,0.15); color: #ff6666; }
     .detail-row {
         font-size: clamp(0.65rem, 2.1vw, 0.76rem);
         color: #999;
@@ -126,7 +152,7 @@ st.markdown("""
 st.markdown("""
 <div class="main-header">
     <h1>🎯 홍익 종가베팅 스캐너</h1>
-    <p>종가매수 → 익일시가 갭수익 · 6대 시그널 · v2.0</p>
+    <p>종가매수 → 익일시가 갭수익 · 6대 시그널 · v2.1</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -239,12 +265,19 @@ SECTOR_MAP = {
     "047050.KS": ("포스코인터내셔널", "물류/운송"),
 }
 
-col1, col2 = st.columns(2)
+# 종목명 → ticker 역매핑 생성
+for tk, (nm, _) in SECTOR_MAP.items():
+    NAME_TO_TICKER[nm] = tk
+
+# ===== 필터 UI (NXT 필터 추가) =====
+col1, col2, col3 = st.columns(3)
 with col1:
     sector_options = ["전체"] + sorted(set(v[1] for v in SECTOR_MAP.values()))
     selected_sector = st.selectbox("📂 섹터", sector_options)
 with col2:
     min_score = st.selectbox("🎯 최소 점수", ["전체", "50+", "70+"])
+with col3:
+    nxt_filter = st.selectbox("🔄 NXT", ["전체", "NXT 가능만"])
 
 
 @st.cache_data(ttl=300)
@@ -378,6 +411,7 @@ def run_analysis():
                     price_str = f"{int(latest_close):,}원"
 
                     all_results.append({
+                        "ticker": ticker,
                         "종목명": name,
                         "섹터": sector,
                         "현재가": int(latest_close),
@@ -442,20 +476,30 @@ try:
     if result_df.empty:
         status_placeholder.warning("📭 데이터를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.")
     else:
+        # 섹터 필터
         if selected_sector != "전체":
             result_df = result_df[result_df["섹터"] == selected_sector]
 
+        # 점수 필터
         if min_score == "50+":
             result_df = result_df[result_df["종합점수"] >= 50]
         elif min_score == "70+":
             result_df = result_df[result_df["종합점수"] >= 70]
+
+        # NXT 필터
+        if nxt_filter == "NXT 가능만":
+            result_df = result_df[result_df["ticker"].apply(is_nxt)]
 
         result_df = result_df.sort_values("종합점수", ascending=False).head(20)
 
         status_placeholder.empty()
 
         now_kst = datetime.now(KST)
-        st.success(f"✅ {now_kst.strftime('%Y.%m.%d %H:%M')} 분석 완료 | {len(result_df)}종목 감지")
+        nxt_count = result_df["ticker"].apply(is_nxt).sum()
+        st.success(
+            f"✅ {now_kst.strftime('%Y.%m.%d %H:%M')} 분석 완료 | "
+            f"{len(result_df)}종목 감지 (NXT가능 {nxt_count}개)"
+        )
 
         st.markdown("""
         <div class="legend-box">
@@ -464,12 +508,15 @@ try:
             <span class="signal-tag tag-gap">🌅 양갭이력</span> 최근 20일 익일시가 양갭 빈도 (20점)<br>
             <span class="signal-tag tag-trend">📐 추세정렬</span> MA5 > MA20 > MA60 골든 정렬 (15점)<br>
             <span class="signal-tag tag-sector">🏭 섹터동반</span> 동일 섹터 동반 상승 (15점)<br>
-            <span class="signal-tag tag-vol100">🔥 100일폭증</span> 100일 평균 대비 3배↑ 거래량 (15점)
+            <span class="signal-tag tag-vol100">🔥 100일폭증</span> 100일 평균 대비 3배↑ 거래량 (15점)<br>
+            <span class="signal-tag tag-nxt-ok">🟢NXT</span> NXT 거래가능 &nbsp;
+            <span class="signal-tag tag-nxt-no">🔴KRX</span> KRX만 거래가능
         </div>
         """, unsafe_allow_html=True)
 
         for _, row in result_df.iterrows():
             score = row["종합점수"]
+            ticker = row["ticker"]
 
             if score >= 70:
                 card_class = "score-high"
@@ -480,6 +527,12 @@ try:
             else:
                 card_class = "score-low"
                 grade = "💤"
+
+            # NXT 태그
+            if is_nxt(ticker):
+                nxt_tag = '<span class="signal-tag tag-nxt-ok">🟢NXT</span>'
+            else:
+                nxt_tag = '<span class="signal-tag tag-nxt-no">🔴KRX</span>'
 
             tags = ""
             if row["strength_score"] > 0:
@@ -506,7 +559,7 @@ try:
 
             st.markdown(f"""
             <div class="score-card {card_class}">
-                <b>{grade} {row['종목명']}</b>
+                <b>{grade} {row['종목명']}</b> {nxt_tag}
                 <span style="float:right; color:#ff6b00; font-weight:bold;">{score}점</span><br>
                 <span style="color:#aaa;">{row['섹터']}</span> ·
                 <span>{row['가격표시']}</span> ·
@@ -531,6 +584,6 @@ except Exception as e:
     status_placeholder.error(f"⚠️ 엔진 오류: {e}")
 
 st.markdown(
-    '<div class="footer">Produced by Hong-Ik Closing Bet Scanner • v2.0</div>',
+    '<div class="footer">Produced by Hong-Ik Closing Bet Scanner • v2.1</div>',
     unsafe_allow_html=True,
 )
