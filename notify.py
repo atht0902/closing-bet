@@ -9,6 +9,7 @@
 import os
 import json
 import glob
+import time
 import requests
 import yfinance as yf
 import pandas as pd
@@ -389,7 +390,19 @@ def send_telegram(message):
         print(f"❌ 전송 실패: {response.status_code} - {response.text}")
 
 
+def wait_until_target():
+    """KST 15:20 정시까지 대기"""
+    now = datetime.now(KST)
+    target = now.replace(hour=15, minute=20, second=0, microsecond=0)
+    if now < target:
+        wait_sec = (target - now).total_seconds()
+        print(f"⏰ KST 15:20까지 {wait_sec:.0f}초 ({wait_sec/60:.1f}분) 대기...")
+        time.sleep(wait_sec)
+    print(f"✅ 현재 시각: {datetime.now(KST).strftime('%H:%M:%S')} KST")
+
+
 if __name__ == "__main__":
+    wait_until_target()
     print("🔍 종가베팅 6대 시그널 분석 시작...")
     result_df = run_analysis()
     if result_df.empty:
