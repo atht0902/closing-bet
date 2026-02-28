@@ -180,14 +180,41 @@ SECTOR_MAP = {
 for tk, (nm, _) in SECTOR_MAP.items():
     NAME_TO_TICKER[nm] = tk
 
+sector_options = ["전체"] + sorted(set(v[1] for v in SECTOR_MAP.values()))
+score_options = ["전체", "50+", "60+", "70+", "80+", "90+"]
+nxt_options = ["전체", "NXT 가능만"]
+
+qp = st.query_params
+
+default_sector = qp.get("sector", "전체")
+if default_sector not in sector_options:
+    default_sector = "전체"
+
+default_score = qp.get("score", "전체")
+if default_score not in score_options:
+    default_score = "전체"
+
+default_nxt = "NXT 가능만" if qp.get("nxt") == "1" else "전체"
+
 col1, col2, col3 = st.columns(3)
 with col1:
-    sector_options = ["전체"] + sorted(set(v[1] for v in SECTOR_MAP.values()))
-    selected_sector = st.selectbox("📂 섹터", sector_options)
+    selected_sector = st.selectbox("📂 섹터", sector_options, index=sector_options.index(default_sector))
 with col2:
-    min_score = st.selectbox("🎯 최소 점수", ["전체", "50+", "70+"])
+    min_score = st.selectbox("🎯 최소 점수", score_options, index=score_options.index(default_score))
 with col3:
-    nxt_filter = st.selectbox("🔄 NXT", ["전체", "NXT 가능만"])
+    nxt_filter = st.selectbox("🔄 NXT", nxt_options, index=nxt_options.index(default_nxt))
+
+new_params = {}
+if selected_sector != "전체":
+    new_params["sector"] = selected_sector
+if min_score != "전체":
+    new_params["score"] = min_score
+if nxt_filter == "NXT 가능만":
+    new_params["nxt"] = "1"
+st.query_params.update(new_params)
+for key in ["sector", "score", "nxt"]:
+    if key not in new_params and key in st.query_params:
+        del st.query_params[key]
 
 
 @st.cache_data(ttl=300)
@@ -359,10 +386,9 @@ try:
     else:
         if selected_sector != "전체":
             result_df = result_df[result_df["섹터"] == selected_sector]
-        if min_score == "50+":
-            result_df = result_df[result_df["종합점수"] >= 50]
-        elif min_score == "70+":
-            result_df = result_df[result_df["종합점수"] >= 70]
+        score_thresholds = {"50+": 50, "60+": 60, "70+": 70, "80+": 80, "90+": 90}
+        if min_score in score_thresholds:
+            result_df = result_df[result_df["종합점수"] >= score_thresholds[min_score]]
         if nxt_filter == "NXT 가능만":
             result_df = result_df[result_df["ticker"].apply(is_nxt)]
         result_df = result_df.sort_values("종합점수", ascending=False).head(20)
