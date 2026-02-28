@@ -190,9 +190,8 @@ default_sector = qp.get("sector", "전체")
 if default_sector not in sector_options:
     default_sector = "전체"
 
-default_score = qp.get("score", "전체")
-if default_score not in score_options:
-    default_score = "전체"
+score_param = qp.get("score", "")
+default_score = f"{score_param}+" if score_param in ["50","60","70","80","90"] else "전체"
 
 default_nxt = "NXT 가능만" if qp.get("nxt") == "1" else "전체"
 
@@ -208,13 +207,18 @@ new_params = {}
 if selected_sector != "전체":
     new_params["sector"] = selected_sector
 if min_score != "전체":
-    new_params["score"] = min_score
+    new_params["score"] = min_score.replace("+", "")
 if nxt_filter == "NXT 가능만":
     new_params["nxt"] = "1"
-st.query_params.update(new_params)
-for key in ["sector", "score", "nxt"]:
-    if key not in new_params and key in st.query_params:
-        del st.query_params[key]
+
+current = {k: st.query_params.get(k) for k in ["sector", "score", "nxt"] if k in st.query_params}
+target = new_params
+if current != target:
+    for key in ["sector", "score", "nxt"]:
+        if key in st.query_params and key not in new_params:
+            del st.query_params[key]
+    if new_params:
+        st.query_params.update(new_params)
 
 
 @st.cache_data(ttl=300)
