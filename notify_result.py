@@ -35,26 +35,50 @@ def load_picks(filepath):
 
 
 def get_today_open_prices(tickers):
-    """오늘 KRX 9시 시가 조회"""
-    try:
-        data = yf.download(tickers, period="2d", group_by="ticker", progress=False, threads=True)
-        if data.empty:
-            return {}
-        result = {}
-        for ticker in tickers:
-            try:
-                if len(tickers) == 1:
-                    df = data.copy()
-                else:
-                    df = data[ticker].copy()
-                df = df.dropna(subset=["Open"])
-                if len(df) >= 1:
-                    result[ticker] = int(df["Open"].values[-1])
-            except Exception:
-                continue
-        return result
-    except Exception:
-        return {}
+    """오늘 KRX 9시 시가 조회 (당일 데이터 확인 + 재시도)"""
+    today = datetime.now(KST).date()
+
+    for attempt in range(3):
+        try:
+            data = yf.download(tickers, period="5d", group_by="ticker", progress=False, threads=True)
+            if data.empty:
+                if attempt < 2:
+                    print(f"⏳ 데이터 비어있음, {60}초 후 재시도 ({attempt+1}/3)")
+                    import time; time.sleep(60)
+                    continue
+                return {}
+
+            result = {}
+            for ticker in tickers:
+                try:
+                    if len(tickers) == 1:
+                        df = data.copy()
+                    else:
+                        df = data[ticker].copy()
+                    df = df.dropna(subset=["Open"])
+                    if len(df) < 1:
+                        continue
+
+                    last_date = df.index[-1].date() if hasattr(df.index[-1], 'date') else df.index[-1]
+                    if last_date == today:
+                        result[ticker] = int(df["Open"].values[-1])
+                    else:
+                        print(f"⚠️ {ticker}: 최신 데이터 {last_date} (오늘 {today} 아님)")
+                except Exception:
+                    continue
+
+            if result:
+                return result
+
+            if attempt < 2:
+                print(f"⏳ 당일 시가 없음, {60}초 후 재시도 ({attempt+1}/3)")
+                import time; time.sleep(60)
+
+        except Exception:
+            if attempt < 2:
+                import time; time.sleep(60)
+
+    return {}
 
 
 def build_result_message(picks_data, open_prices):
@@ -142,9 +166,13 @@ if __name__ == "__main__":
     print(f"📋 {picks_data['date']} 추천 종목 {len(picks_data['picks'])}개 로드")
 
     tickers = [p["티커"] for p in picks_data["picks"]]
-    print(f"📈 KRX 시가 조회 중...")
+    print(f"📈 KRX 시가 조회 중... (당일 데이터 확인 포함)")
     open_prices = get_today_open_prices(tickers)
-    print(f"✅ 시가 조회 완료: {len(open_prices)}종목")
+    print(f"✅ 시가 조회 완료: {len(open_prices)}/{len(tickers)}종목")
+
+    if not open_prices:
+        print("❌ 당일 시가 데이터를 가져올 수 없습니다. (시장 미개장 또는 데이터 지연)")
+        exit(0)
 
     message = build_result_message(picks_data, open_prices)
     print("\n📨 전송할 메시지:")
