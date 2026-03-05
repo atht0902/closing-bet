@@ -2,7 +2,7 @@ name: Closing Bet Alert
 
 on:
   schedule:
-    - cron: '5 0 * * 1-5'
+    - cron: '5 21 * * 0-4'
     - cron: '20 6 * * 1-5'
   workflow_dispatch:
     inputs:
