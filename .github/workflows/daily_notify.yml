@@ -2,7 +2,7 @@ name: Closing Bet Alert
 
 on:
   schedule:
-    - cron: '3 0 * * 1-5'    # KST 09:03 (UTC 00:03) - 시가갭 결과 리포트
+    - cron: '0 2 * * 1-5'    # KST 11:00 시작 → 11:30까지 대기 후 발송 (UTC 02:00)
     - cron: '30 4 * * 1-5'   # KST 15:20 대기 후 발송 (UTC 04:30 시작)
   workflow_dispatch:
     inputs:
@@ -23,7 +23,7 @@ jobs:
   morning-gap:
     runs-on: ubuntu-latest
     if: >-
-      (github.event_name == 'schedule' && github.event.schedule == '3 0 * * 1-5') ||
+      (github.event_name == 'schedule' && github.event.schedule == '0 2 * * 1-5') ||
       (github.event_name == 'workflow_dispatch' && (github.event.inputs.mode == 'both' || github.event.inputs.mode == 'result'))
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: pip install yfinance pandas numpy requests
 
-      - name: Run gap result report (KST 09:03)
+      - name: Run gap result report (KST 11:30)
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
