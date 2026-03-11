@@ -1,6 +1,6 @@
 """
 홍익 종가베팅 - 익일 시가갭 결과 리포트
-매일 09:05 KST 자동 실행
+매일 11:30 KST 자동 실행
 전일 추천 종목의 KRX 9시 시가 기준 등락율 리포팅
 """
 
@@ -15,6 +15,18 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 CHAT_ID = os.environ.get("CHAT_ID", "")
 KST = timezone(timedelta(hours=9))
 DATA_DIR = "data"
+
+
+def wait_until_target():
+    """KST 11:30 정시까지 대기"""
+    import time
+    now = datetime.now(KST)
+    target = now.replace(hour=11, minute=30, second=0, microsecond=0)
+    if now < target:
+        wait_sec = (target - now).total_seconds()
+        print(f"⏰ KST 11:30까지 {wait_sec:.0f}초 ({wait_sec/60:.1f}분) 대기...")
+        time.sleep(wait_sec)
+    print(f"✅ 현재 시각: {datetime.now(KST).strftime('%H:%M:%S')} KST")
 
 
 def find_latest_picks():
@@ -120,7 +132,7 @@ def build_result_message(picks_data, open_prices):
             gap = r["등락율"]
             total_gap += gap
 
-            if gap > 0:
+            if gap > 0.5:
                 icon = "✅"
                 win_count += 1
             else:
@@ -151,6 +163,7 @@ def send_telegram(message):
 
 
 if __name__ == "__main__":
+    wait_until_target()
     print("📊 종가베팅 결과 분석 시작...")
 
     filepath = find_latest_picks()
